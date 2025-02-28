@@ -9,14 +9,14 @@ function FormFile({topic}) {
   const [number, setNumber] = useState("");
   const [alternateNumber, setAlternateNumber] = useState("");
   const [instituteId, setInstituteId] = useState("");
-  const [instituteName, setInstituteName  ] = useState("");
+  const [instituteName, setInstituteName] = useState("");
   const [showImageUpload, setShowImageUpload] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState(false);
   const [paymentProof, setPaymentProof] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const router = useRouter();
   
-
   const handlePaymentClick = () => {
     setShowImageUpload(true); 
   };
@@ -42,16 +42,18 @@ function FormFile({topic}) {
         return;
       }
   
-      if (number === alternateNumber) {
+      if (number === alternateNumber && alternateNumber !== "") {
         alert("Primary and alternate numbers should be different.");
         return;
       }
   
-      if (!paymentStatus || !paymentProof) {
+      if (!paymentStatus) {
         alert("Please upload payment proof before submitting.");
         return;
       }
-  
+
+      setIsSubmitting(true);
+      
       const formData = new FormData();
       formData.append("name", name);
       formData.append("email", email);
@@ -60,18 +62,15 @@ function FormFile({topic}) {
       formData.append("instituteId", instituteId);
       formData.append("instituteName", instituteName);
       formData.append("paymentProof", paymentProof);
-  
-      const res = await fetch(`/api/submit/${topic}`, {
-  method: 'POST',
-  body: formData,
-  // No need to specify Content-Type as fetch sets it automatically 
-  // when using FormData object
-});
 
-// To get the JSON response (if the API returns JSON)
-const data = await res.json();
-  
-      if (res.status === 200) {
+      // Using fetch instead of axios
+      const response = await fetch(`/api/submit/${topic}`, {
+        method: 'POST',
+        body: formData,
+        // No need to specify Content-Type as fetch sets it automatically with FormData
+      });
+
+      if (response.ok) {
         alert("Form submitted successfully!");
         setName("");
         setEmail("");
@@ -82,15 +81,19 @@ const data = await res.json();
         setPaymentProof(null);
         setPaymentStatus(false);
         setShowImageUpload(false);
-        router.push("/Lecture");
+        router.push('/Lecture');
       } else {
-        alert("Form submission failed.");
+        const errorData = await response.json().catch(() => ({}));
+        console.error("Form submission failed:", response.status, errorData);
+        alert(`Form submission failed. Error: ${errorData.message || response.statusText || 'Unknown error'}`);
       }
     } catch (error) {
-      console.error("Error while submitting the form", error);
+      console.error("Error while submitting the form:", error);
+      alert(`An error occurred: ${error.message}`);
+    } finally {
+      setIsSubmitting(false);
     }
   };
-  
 
   return (
     <div className="w-full flex justify-center">
@@ -106,6 +109,7 @@ const data = await res.json();
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
+          required
         />
         <input
           name="email"
@@ -114,6 +118,7 @@ const data = await res.json();
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          required
         />
         <input
           name="number"
@@ -122,12 +127,13 @@ const data = await res.json();
           type="tel"
           value={number}
           onChange={(e) => setNumber(e.target.value)}
+          required
         />
         <input
           name="alternate number"
           className="w-full rounded-lg py-2 px-4 text-base border placeholder:opacity-60 border-gray-300 focus:border-2 focus:border-gray-500 outline-none"
           placeholder="Alternate Mobile Number"
-         type="tel"
+          type="tel"
           value={alternateNumber}
           onChange={(e) => setAlternateNumber(e.target.value)}
         />
@@ -135,31 +141,30 @@ const data = await res.json();
           name="institute id"
           className="w-full rounded-lg py-2 px-4 text-base border placeholder:opacity-60 border-gray-300 focus:border-2 focus:border-gray-500 outline-none"
           placeholder="Institute Id"
-          type="tel"
+          type="text"
           value={instituteId}
           onChange={(e) => setInstituteId(e.target.value)}
-        /> <input
+        /> 
+        <input
           name="Institute Name"
           className="w-full rounded-lg py-2 px-4 text-base border placeholder:opacity-60 border-gray-300 focus:border-2 focus:border-gray-500 outline-none"
           placeholder="Institute Name"
-          type="tel"
+          type="text"
           value={instituteName}
           onChange={(e) => setInstituteName(e.target.value)}
         />
        </div>
 
- <div className="flex flex-col items-center gap-4 mt-6">
-        
-        
+       <div className="flex flex-col items-center gap-4 mt-6">
         {showImageUpload && (
           <div className="flex flex-col items-center gap-4 w-full">
             <Image
               src="./QR.jpg"
               width={200}
-        height={200}
-        alt="QR Code"
-        unoptimized
-         />
+              height={200}
+              alt="QR Code"
+              unoptimized
+            />
             <input
               type="file"
               accept="image/*"
@@ -179,18 +184,19 @@ const data = await res.json();
           </button>
         )}
 
-        
         {paymentStatus && (
-        
-        <button
+          <button
             type="submit"
-            className="w-full max-w-xs py-2 px-4 text-base font-medium text-white bg-green-500 rounded-lg hover:bg-green-600 focus:outline-none"
-           >
-          Submit
-       </button>
-          )}
-  </div>
-</form>
+            disabled={isSubmitting}
+            className={`w-full max-w-xs py-2 px-4 text-base font-medium text-white ${
+              isSubmitting ? 'bg-gray-500' : 'bg-green-500 hover:bg-green-600'
+            } rounded-lg focus:outline-none`}
+          >
+            {isSubmitting ? 'Submitting...' : 'Submit'}
+          </button>
+        )}
+      </div>
+    </form>
   </div>
   );
 }
