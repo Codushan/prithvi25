@@ -1,5 +1,4 @@
 "use client";
-import axios from "axios";
 import React, { useState } from "react";
 import { useRouter } from 'next/navigation';
 import Image from "next/image";
@@ -62,9 +61,15 @@ function FormFile({topic}) {
       formData.append("instituteName", instituteName);
       formData.append("paymentProof", paymentProof);
   
-      const res = await axios.post(`/api/submit/${topic}`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const res = await fetch(`/api/submit/${topic}`, {
+  method: 'POST',
+  body: formData,
+  // No need to specify Content-Type as fetch sets it automatically 
+  // when using FormData object
+});
+
+// To get the JSON response (if the API returns JSON)
+const data = await res.json();
   
       if (res.status === 200) {
         alert("Form submitted successfully!");
